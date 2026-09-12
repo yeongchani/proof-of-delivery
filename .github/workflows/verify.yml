@@ -1,0 +1,40 @@
+name: pod-verify
+
+on:
+  push:
+    paths: ["example-deliverable/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    env:
+      RUNNER_IMAGE_DIGEST: ${{ vars.RUNNER_IMAGE_DIGEST }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Run acceptance tests
+        run: npm run runner:test # -> runner/out/result.json
+      - name: Sign result (EIP-712)
+        env:
+          RUNNER_PRIVATE_KEY: ${{ secrets.RUNNER_PRIVATE_KEY }}
+          CHAIN_ID: 421614
+          ESCROW_ADDRESS: ${{ vars.ESCROW_ADDRESS }}
+        run: npm run runner:sign # skipped (exit 0) when secrets are absent
+      - name: Submit on-chain
+        env:
+          RPC_URL: ${{ secrets.ARB_SEPOLIA_RPC }}
+          RUNNER_PRIVATE_KEY: ${{ secrets.RUNNER_PRIVATE_KEY }}
+          ESCROW_ADDRESS: ${{ vars.ESCROW_ADDRESS }}
+        run: npm run runner:submit # skipped (exit 0) when secrets are absent
+      - uses: actions/upload-artifact@v4
+        with:
+          name: verification-result
+          path: runner/out/

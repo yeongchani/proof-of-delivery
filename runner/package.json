@@ -1,0 +1,20 @@
+{
+  "name": "@pod/runner",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "run-tests": "tsx src/run-tests.ts",
+    "sign": "tsx src/sign.ts",
+    "submit": "tsx src/submit.ts",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "ethers": "^6.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "tsx": "^4.15.0",
+    "typescript": "^5.4.0",
+    "vitest": "^3.0.0"
+  }
+}

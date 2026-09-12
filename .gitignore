@@ -1,0 +1,19 @@
+node_modules/
+.env
+.env.*
+!.env.example
+
+# hardhat
+contracts/artifacts/
+contracts/cache/
+contracts/typechain-types/
+contracts/coverage/
+contracts/coverage.json
+
+# runner / deliverable outputs
+runner/out/
+example-deliverable/test-results.json
+
+dist/
+*.log
+.DS_Store

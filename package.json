@@ -1,0 +1,24 @@
+{
+  "name": "pod",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Proof of Delivery — verification-based settlement protocol for IT outsourcing milestones",
+  "license": "MIT",
+  "workspaces": [
+    "contracts",
+    "runner",
+    "example-deliverable"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "npm run build -w contracts",
+    "test": "npm test --workspaces --if-present",
+    "demo": "npm run demo -w contracts",
+    "deploy:sepolia": "npm run deploy:sepolia -w contracts",
+    "runner:test": "npm run run-tests -w runner",
+    "runner:sign": "npm run sign -w runner",
+    "runner:submit": "npm run submit -w runner"
+  }
+}
