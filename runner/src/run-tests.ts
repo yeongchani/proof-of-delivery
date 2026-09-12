@@ -79,7 +79,7 @@ export function runAcceptance(opts: RunOptions = {}): RunnerResult {
   const reportFile = path.join(deliverableDir, "test-results.json");
   if (fs.existsSync(reportFile)) fs.unlinkSync(reportFile);
 
-  const proc = spawnSync("npm", ["test"], {
+  const proc = spawnSync("npm test", {
     cwd: deliverableDir,
     shell: true,
     encoding: "utf8",
@@ -116,5 +116,16 @@ if (require.main === module) {
   console.log(`[runner] acceptanceHash=${result.acceptanceHash}`);
   console.log(`[runner] resultHash=${canonicalHash(result)}`);
   console.log(`[runner] wrote ${path.join(OUT_DIR, "result.json")}`);
-  process.exit(result.passed ? 0 : 1);
+
+  // GitHub Actions job summary (markdown), if available
+  if (process.env.GITHUB_STEP_SUMMARY) {
+    const rows = result.criteria.map((c) => `| ${c.id} | ${c.passed ? "✅" : "❌"} | ${c.evidence} |`).join("\n");
+    fs.appendFileSync(
+      process.env.GITHUB_STEP_SUMMARY,
+      `## Proof of Delivery — verification ${result.passed ? "PASSED ✅" : "FAILED ❌"}\n\n` +
+        `commit \`${result.commitHash}\`  \nacceptanceHash \`${result.acceptanceHash}\`  \nresultHash \`${canonicalHash(result)}\`\n\n` +
+        `| criterion | passed | evidence |\n|---|---|---|\n${rows}\n`,
+    );
+  }
+  // A failed verdict is still a valid, signable result (VerificationFailed on-chain) — do not fail the job here.
 }

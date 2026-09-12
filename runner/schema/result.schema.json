@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/yeongchani/proof-of-delivery/runner/schema/result.schema.json",
+  "title": "PoD verification result",
+  "description": "Produced by runner/src/run-tests.ts. keccak256(canonical JSON) of this document is the resultHash inside the EIP-712 VerificationResult that the runner signs.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["agreementId", "milestoneIndex", "acceptanceHash", "commitHash", "runnerImageDigest", "criteria", "passed", "timestamp", "logUrl"],
+  "properties": {
+    "agreementId": { "type": "integer", "minimum": 1 },
+    "milestoneIndex": { "type": "integer", "minimum": 0 },
+    "acceptanceHash": { "$ref": "#/$defs/bytes32" },
+    "commitHash": { "type": "string", "pattern": "^[0-9a-f]{40}$", "description": "git rev-parse HEAD (left-padded to bytes32 when signed)" },
+    "runnerImageDigest": { "$ref": "#/$defs/bytes32" },
+    "criteria": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "passed", "evidence"],
+        "properties": {
+          "id": { "type": "string" },
+          "passed": { "type": "boolean" },
+          "evidence": { "type": "string" }
+        }
+      }
+    },
+    "passed": { "type": "boolean", "description": "trigger evaluated (all_tier1_pass)" },
+    "timestamp": { "type": "integer", "description": "unix seconds" },
+    "logUrl": { "type": "string", "description": "GitHub Actions run URL, or 'local'" }
+  },
+  "$defs": {
+    "bytes32": { "type": "string", "pattern": "^0x[0-9a-fA-F]{64}$" }
+  }
+}

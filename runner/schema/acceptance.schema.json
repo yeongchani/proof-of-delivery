@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/yeongchani/proof-of-delivery/runner/schema/acceptance.schema.json",
+  "title": "PoD acceptance criteria",
+  "description": "Machine-checkable acceptance criteria for one milestone. keccak256(canonical JSON) of this document is the on-chain acceptanceHash. This is also the output format of the (future) AI SOW -> acceptance converter.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "agreement", "milestone", "criteria", "trigger"],
+  "properties": {
+    "version": { "type": "string", "const": "1" },
+    "agreement": { "type": "string", "description": "Human-readable agreement slug" },
+    "milestone": { "type": "integer", "minimum": 0 },
+    "criteria": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "tier", "desc", "test"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^AC-[0-9]+$" },
+          "tier": { "type": "integer", "enum": [1, 2, 3], "description": "1 = must pass for payout, 2/3 = informational" },
+          "desc": { "type": "string" },
+          "test": { "type": "string", "description": "Substring matched (case-insensitive) against the test's full name in the test report" }
+        }
+      }
+    },
+    "trigger": { "type": "string", "enum": ["all_tier1_pass"] }
+  }
+}
