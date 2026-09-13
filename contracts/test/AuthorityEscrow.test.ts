@@ -137,7 +137,6 @@ describe("AuthorityEscrow", () => {
     "runnerDigest",
     "authorityVersion",
     "agreementId",
-    "passed",
     "expiry",
   ]) {
     it(`rejects invalid ${field}`, async () => {
@@ -145,8 +144,6 @@ describe("AuthorityEscrow", () => {
       const value =
         field.endsWith("Hash") || field === "runnerDigest"
           ? ethers.id("wrong")
-          : field === "passed"
-          ? false
           : field === "expiry"
           ? 1
           : 2;
@@ -166,6 +163,9 @@ describe("AuthorityEscrow", () => {
       await expect(f.escrow.submitResult(s.result, s.signature)).to.be.reverted;
     }
     const s = await signed(f);
+    await expect(
+      f.escrow.submitResult({ ...s.result, passed: false }, s.signature)
+    ).to.be.reverted;
     await expect(
       f.escrow.submitResult(
         { ...s.result, sourceHash: ethers.id("changed") },
@@ -259,7 +259,7 @@ describe("AuthorityEscrow", () => {
       await expect(f.escrow.refundTimeout(1)).to.be.reverted;
     });
   }
-  it("requires public source preimage before submission so withholding cannot trap accepted funds", async () => {
+  it("rejects premature on-chain key disclosure and couples handover to payment", async () => {
     const f = await loadFixture(fixture);
     const key = ethers.toUtf8Bytes("public source key");
     await f.escrow
@@ -269,13 +269,16 @@ describe("AuthorityEscrow", () => {
     await f.escrow.connect(f.client).fund(2);
     await f.escrow.connect(f.developer).depositDevBond(2);
     const s = await signed(f, { agreementId: 2 });
-    await expect(f.escrow.submitResult(s.result, s.signature)).to.be.reverted;
+    await expect(f.escrow.revealSourceKey(2, key)).to.be.reverted;
+    await f.escrow.submitResult(s.result, s.signature);
+    await expect(f.escrow.revealSourceKey(2, key)).to.be.reverted;
+    await time.increaseTo((await f.escrow.getAgreement(2)).challengeDeadline);
     await expect(f.escrow.revealSourceKey(2, ethers.toUtf8Bytes("wrong"))).to.be
       .reverted;
+    await expect(f.escrow.release(2)).to.be.reverted;
     await f.escrow.connect(f.other).revealSourceKey(2, key);
-    await f.escrow.submitResult(s.result, s.signature);
-    await time.increaseTo((await f.escrow.getAgreement(2)).challengeDeadline);
-    await f.escrow.release(2);
+    expect((await f.escrow.getAgreement(2)).state).to.equal(5);
+    await expect(f.escrow.release(2)).to.be.reverted;
   });
   it("enforces period and retention bounds", async () => {
     const f = await loadFixture(fixture);

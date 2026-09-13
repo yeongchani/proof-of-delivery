@@ -2,10 +2,15 @@ import { describe, expect, it } from "vitest";
 import {
   buildAuthorityEvidence,
   reviewInputFor,
+  verifyHistoricalAuthorityEvidenceV1,
 } from "../src/authority-evidence";
+import fs from "fs";
+import path from "path";
 import { canonicalHash } from "../src/hash";
 import { runDualReview } from "../src/ai-review";
 import { createFixtureProvider } from "../src/ai-provider";
+import { sourceEvidenceHash } from "../src/source-review";
+import type { SourceEvidence } from "../src/types";
 import type { RunnerResult } from "../src/types";
 
 const hash = "0x" + "1".repeat(64);
@@ -16,12 +21,20 @@ const acceptance = {
   milestone: 0,
   trigger: "all_tier1_pass",
 };
+const sourceEvidence: SourceEvidence = {
+  version: 1,
+  files: [
+    { path: "acceptance.json", content: JSON.stringify(acceptance) },
+    { path: "src/app.ts", content: "export const health = () => true;" },
+  ],
+};
 const execution: RunnerResult = {
   agreementId: 1,
   milestoneIndex: 0,
   acceptanceHash: canonicalHash(acceptance),
   commitHash: "a".repeat(40),
-  sourceHash: hash,
+  sourceHash: sourceEvidenceHash(sourceEvidence),
+  sourceEvidence,
   sourceCommitted: true,
   runnerImageDigest: hash,
   criteria: [{ id: "AC-1", passed: true, evidence: "health passed" }],
@@ -38,7 +51,15 @@ async function review(e = execution) {
         {
           id: "AC-1",
           passed: true,
-          citations: [{ evidenceId: "AC-1", quote: input.evidence[0].text }],
+          citations: [
+            { evidenceId: "AC-1", quote: input.evidence[0].text },
+            {
+              evidenceId: input.evidence.find((e) =>
+                e.text.includes("src/app.ts")
+              )!.id,
+              quote: "export const health",
+            },
+          ],
         },
       ],
     }),
@@ -48,6 +69,66 @@ async function review(e = execution) {
   });
 }
 describe("authority settlement evidence binding", () => {
+  it("preserves archived v1 hashes only through the historical verifier", () => {
+    const record = JSON.parse(
+      fs.readFileSync(
+        path.resolve(__dirname, "../fixtures/codex-live/authority-demo.json"),
+        "utf8"
+      )
+    );
+    const args = [
+      record.evidence.execution,
+      record.evidence.ai,
+      record.manifest.acceptance,
+      record.manifest.aiPolicyHash,
+      31337n,
+    ] as const;
+    expect(verifyHistoricalAuthorityEvidenceV1(...args).resultHash).toBe(
+      record.signedResult.message.resultHash
+    );
+    expect(() => buildAuthorityEvidence(...args)).toThrow(/source/i);
+  });
+  it("requires actual source snapshots for new settlement evidence", async () => {
+    const ai = await review();
+    expect(() =>
+      buildAuthorityEvidence(
+        { ...execution, sourceEvidence: undefined },
+        ai,
+        acceptance,
+        ai.policyHash,
+        31337n
+      )
+    ).toThrow(/source/i);
+  });
+  it("binds actual code and its path to the AI input and rejects source substitution", async () => {
+    const ai = await review();
+    expect(
+      ai.input.evidence.some(
+        (e) =>
+          e.text.includes("src/app.ts") &&
+          e.text.includes("export const health")
+      )
+    ).toBe(true);
+    const changed = structuredClone(execution);
+    changed.sourceEvidence!.files[1].content =
+      "export const health = () => false;";
+    expect(() =>
+      buildAuthorityEvidence(changed, ai, acceptance, ai.policyHash, 31337n)
+    ).toThrow(/source/i);
+    expect(
+      buildAuthorityEvidence(execution, ai, acceptance, ai.policyHash, 31337n)
+        .version
+    ).toBe(2);
+  });
+  it("does not confuse a changed source acceptance with the agreed acceptance", () => {
+    const changed = structuredClone(execution);
+    changed.sourceEvidence!.files[0].content = JSON.stringify({
+      ...acceptance,
+      agreement: "other",
+    });
+    changed.sourceHash = sourceEvidenceHash(changed.sourceEvidence);
+    expect(() => reviewInputFor(changed, acceptance)).toThrow(/acceptance/i);
+  });
   it("binds execution and AI evidence and labels local synthetic mode", async () => {
     const ai = await review();
     const result = buildAuthorityEvidence(

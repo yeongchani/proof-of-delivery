@@ -9,12 +9,20 @@ interface TimedAgreement {
   disputeDeadline: bigint;
   retentionDeadline: bigint;
   retained: bigint;
+  sourceRevealed: boolean;
+  handoverDeadline: bigint;
 }
 export function dueAction(
   a: TimedAgreement,
   now: bigint
 ): "release" | "releaseRetention" | "refundTimeout" | null {
-  if (a.state === 3n && now >= a.challengeDeadline) return "release";
+  if (a.state === 3n && now >= a.challengeDeadline) {
+    if (a.sourceRevealed) return "release";
+    if (now >= a.handoverDeadline) return "refundTimeout";
+  }
+  if (a.state === 8n && now >= a.handoverDeadline) return "refundTimeout";
+  if (a.state === 7n && now >= a.deliveryDeadline && now >= a.challengeDeadline)
+    return "refundTimeout";
   if (a.state === 5n && a.retained > 0n && now >= a.retentionDeadline)
     return "releaseRetention";
   if ((a.state === 1n || a.state === 2n) && now >= a.deliveryDeadline)

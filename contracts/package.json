@@ -8,7 +8,8 @@
     "test": "hardhat test",
     "demo": "hardhat run scripts/demo.ts",
     "demo:authority": "hardhat run scripts/demo-authority.ts",
-    "deploy:sepolia": "hardhat run scripts/deploy.ts --network arbitrumSepolia"
+    "deploy:sepolia": "hardhat run scripts/deploy.ts --network arbitrumSepolia",
+    "deploy:authority:sepolia": "hardhat run scripts/deploy-authority.ts --network arbitrumSepolia"
   },
   "dependencies": {
     "@openzeppelin/contracts": "^5.0.2"

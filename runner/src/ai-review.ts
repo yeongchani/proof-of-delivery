@@ -174,6 +174,15 @@ export function validateTokenUsage(value: unknown): TokenUsage {
     throw new Error("invalid_usage");
   return { ...usage };
 }
+function validateUsageWithinBudget(
+  value: unknown,
+  maxOutputTokens: number
+): TokenUsage {
+  const usage = validateTokenUsage(value);
+  if (usage.outputTokens > maxOutputTokens)
+    throw new Error("output_token_budget_exceeded");
+  return usage;
+}
 function parseVotes(content: string, input: ReviewInput): CriterionVote[] {
   const root = object(JSON.parse(content));
   keys(root, ["criteria"]);
@@ -335,7 +344,10 @@ export async function runDualReview(
           );
           call.rawResponse = validContent(response);
           if (response.usage !== undefined)
-            call.usage = validateTokenUsage(response.usage);
+            call.usage = validateUsageWithinBudget(
+              response.usage,
+              settings.maxOutputTokens
+            );
           call.votes = parseVotes(call.rawResponse, input);
         } catch (e) {
           // Never record arbitrary provider error text: HTTP errors may contain credentials.
@@ -520,7 +532,10 @@ export function validateReviewRecord(
       rawVotes.push(votes);
       if (call.usage === null) usage.complete = false;
       else {
-        const measured = validateTokenUsage(call.usage);
+        const measured = validateUsageWithinBudget(
+          call.usage,
+          settings.maxOutputTokens
+        );
         usage.inputTokens += measured.inputTokens;
         usage.outputTokens += measured.outputTokens;
         usage.totalTokens += measured.totalTokens;
@@ -638,7 +653,10 @@ export async function runRequirementDraft(
     );
     result.rawResponse = validContent(response);
     if (response.usage !== undefined)
-      result.usage = validateTokenUsage(response.usage);
+      result.usage = validateUsageWithinBudget(
+        response.usage,
+        settings.maxOutputTokens
+      );
     const root = object(JSON.parse(result.rawResponse));
     keys(root, ["suggestions"]);
     if (

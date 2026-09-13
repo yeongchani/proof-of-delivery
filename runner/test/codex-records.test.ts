@@ -2,17 +2,17 @@ import { describe, it, expect } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import { validateReviewRecord } from "../src/ai-review";
-import { buildAuthorityEvidence } from "../src/authority-evidence";
-import { runnerFingerprint } from "../src/policy";
+import { verifyHistoricalAuthorityEvidenceV1 } from "../src/authority-evidence";
 
 describe("archived live records: offline consistency only, NOT provider authenticity or new inference",()=>{
-  it("rebuilds the archived live settlement evidence with the same reviewed runner",()=>{
+  it("rebuilds the historical v1 settlement without claiming it ran the current code",()=>{
     const record=JSON.parse(fs.readFileSync(path.resolve(__dirname,"../fixtures/codex-live/authority-demo.json"),"utf8"));
-    const rebuilt=buildAuthorityEvidence(record.evidence.execution,record.evidence.ai,record.manifest.acceptance,record.manifest.aiPolicyHash,31337n);
+    const rebuilt=verifyHistoricalAuthorityEvidenceV1(record.evidence.execution,record.evidence.ai,record.manifest.acceptance,record.manifest.aiPolicyHash,31337n);
     expect(record.aiMode).toBe("live");
     expect(rebuilt.passed).toBe(true);
     expect(rebuilt.resultHash).toBe(record.signedResult.message.resultHash);
-    expect(record.manifest.runnerDigest).toBe(runnerFingerprint());
+    // Source fingerprint of the archived f2cf5c9 run, deliberately not the current runner.
+    expect(record.manifest.runnerDigest).toBe("0xe59e100b65937c0a667faeb1ca9708318b2db84486a605c81a489a01cae5455f");
   });
   const cases: [string,boolean][] = [
     ["before-observations/normal.json",false],

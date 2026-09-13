@@ -22,6 +22,12 @@ export interface CriterionResult {
   evidence: string;
 }
 
+/** Complete, bounded UTF-8 snapshot of the provenance inputs; never truncated. */
+export interface SourceEvidence {
+  version: 1;
+  files: { path: string; content: string }[];
+}
+
 /** result.json produced by the runner. Its canonical keccak256 is the on-chain resultHash. */
 export interface RunnerResult {
   agreementId: number;
@@ -31,6 +37,7 @@ export interface RunnerResult {
   commitHash: string;
   sourceHash?: string;
   sourceCommitted?: boolean;
+  sourceEvidence?: SourceEvidence;
   runnerImageDigest: string;
   criteria: CriterionResult[];
   passed: boolean;

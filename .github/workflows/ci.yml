@@ -23,6 +23,7 @@ jobs:
       - run: npm test
       - run: npm run typecheck
       - run: npm run demo
+      - run: npm run demo:cli
       - run: npm run demo:legacy
       - name: Exercise explicit synthetic AI CLI
         run: npm run ai:review -- --synthetic --fixture runner/fixtures/ai-responses.synthetic.json --input runner/fixtures/ai-input.synthetic.json --output runner/out/ci-ai-review.json
@@ -34,6 +35,7 @@ jobs:
           name: authority-demo-evidence
           path: |
             runner/out/authority-demo.json
+            runner/out/authority-cli-smoke.json
             runner/out/ci-ai-review.json
             runner/out/ci-ai-draft.json
           if-no-files-found: error

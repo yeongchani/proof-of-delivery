@@ -15,6 +15,7 @@ import {
 } from "../../runner/src/authority-evidence";
 import { sealDelivery, openDelivery } from "../../runner/src/delivery";
 import { dueAction } from "../../runner/src/keeper";
+import { collectSourceEvidence } from "../../runner/src/source-review";
 
 const DAY = 86400;
 const units = (s: string) => ethers.parseUnits(s, 6);
@@ -49,9 +50,8 @@ async function main() {
       "utf8"
     )
   );
-  const source = fs.readFileSync(
-    path.join(root, "example-deliverable/src/app.ts")
-  );
+  // Seal every reviewed source file and the agreed criteria, not only the sample entry point.
+  const source = Buffer.from(JSON.stringify(collectSourceEvidence(path.join(root, "example-deliverable"))));
   const delivery = sealDelivery(source);
   if (process.env.POD_DEMO_AI && process.env.POD_DEMO_AI !== "codex")
     throw new Error("Unknown demo AI mode");
@@ -116,7 +116,7 @@ async function main() {
     console.log(step);
   };
   console.log(
-    "PoD v4: LOCAL token transfers + REAL API tests + " +
+    "PoD: LOCAL token transfers + REAL API tests and source evidence + " +
       (liveProvider ? "LIVE Codex CLI review" : "SYNTHETIC AI responses") +
       " (not a model accuracy benchmark)"
   );
@@ -177,6 +177,11 @@ async function main() {
     chainId
   );
   assert.equal(evidence.passed, true);
+  // The verifier checks the sealed delivery privately before signing; the client gets the key only at settlement.
+  assert.deepEqual(
+    JSON.parse(openDelivery(delivery.envelope, delivery.key, manifest.sourceKeyHash, manifest.sourcePackageHash).toString("utf8")),
+    execution.sourceEvidence
+  );
   console.log(
     `3. Actual acceptance checks passed; ${ai.mode} dual-review pipeline calls=${ai.calls}`
   );
@@ -204,19 +209,8 @@ async function main() {
     "   Developer approves identical replacement",
     escrow.connect(developer).approveAuthority(1, nextRunner.address, 3)
   );
-  await track(
-    "5. Reveal committed key BEFORE inspection window (key becomes public)",
-    escrow.connect(developer).revealSourceKey(1, delivery.key)
-  );
-  assert.deepEqual(
-    openDelivery(
-      delivery.envelope,
-      delivery.key,
-      manifest.sourceKeyHash,
-      manifest.sourcePackageHash
-    ),
-    source
-  );
+  await assert.rejects(escrow.connect(developer).revealSourceKey(1, delivery.key));
+  console.log("5. Early source-key disclosure rejected; encrypted package remains sealed");
   await assert.rejects(escrow.submitResult(message, oldSignature), /binding/);
   console.log("   Old signed result rejected after authority change");
   const current = { ...message, authorityVersion: 3 };
@@ -225,15 +219,21 @@ async function main() {
     "6. Authorized result submitted",
     escrow.connect(caller).submitResult(current, signature)
   );
+  await assert.rejects(escrow.connect(client).revokeAuthority(1), /authority frozen/);
+  await assert.rejects(escrow.connect(developer).revealSourceKey(1, delivery.key));
   await assert.rejects(escrow.release(1), /release/);
   await time.increaseTo((await escrow.getAgreement(1)).challengeDeadline);
   assert.equal(
     dueAction(await escrow.getAgreement(1), BigInt(await time.latest())),
-    "release"
+    null
   );
   await track(
-    "7. Caller releases 270 plus returns collateral 30; retains 30",
-    escrow.connect(caller).release(1)
+    "7. Reveal committed key and pay 270 plus collateral 30 atomically; retain 30",
+    escrow.connect(developer).revealSourceKey(1, delivery.key)
+  );
+  assert.deepEqual(
+    openDelivery(delivery.envelope, delivery.key, manifest.sourceKeyHash, manifest.sourcePackageHash),
+    source
   );
   assert.equal(await token.balanceOf(developer.address), units("370"));
   assert.equal(await token.balanceOf(address), units("30"));

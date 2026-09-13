@@ -9,6 +9,8 @@ describe("authority keeper deadline decisions", () => {
     disputeDeadline: 200n,
     retentionDeadline: 300n,
     retained: 10n,
+    sourceRevealed: true,
+    handoverDeadline: 150n,
   };
   it("releases at the exact challenge boundary, never before it", () => {
     expect(dueAction(a, 99n)).toBeNull();
@@ -24,5 +26,20 @@ describe("authority keeper deadline decisions", () => {
     expect(dueAction({ ...a, state: 5n }, 300n)).toBe("releaseRetention");
     expect(dueAction({ ...a, state: 5n, retained: 0n }, 400n)).toBeNull();
     expect(dueAction({ ...a, state: 6n }, 400n)).toBeNull();
+  });
+  it("waits for atomic key handover and refunds only at its deadline", () => {
+    const keyed = { ...a, sourceRevealed: false };
+    expect(dueAction(keyed, 100n)).toBeNull();
+    expect(dueAction(keyed, 149n)).toBeNull();
+    expect(dueAction(keyed, 150n)).toBe("refundTimeout");
+    expect(dueAction({ ...keyed, state: 8n }, 149n)).toBeNull();
+    expect(dueAction({ ...keyed, state: 8n }, 150n)).toBe("refundTimeout");
+  });
+  it("preserves a failed result's appeal period beyond the original delivery deadline", () => {
+    expect(dueAction({ ...a, state: 7n }, 50n)).toBeNull();
+    expect(dueAction({ ...a, state: 7n }, 100n)).toBe("refundTimeout");
+    expect(dueAction({ ...a, state: 7n, deliveryDeadline: 120n }, 100n)).toBeNull();
+    expect(dueAction({ ...a, state: 7n, deliveryDeadline: 120n }, 120n)).toBe("refundTimeout");
+    expect(dueAction({ ...a, state: 9n }, 1000n)).toBeNull();
   });
 });

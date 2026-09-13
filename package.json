@@ -24,11 +24,15 @@
     "cost": "tsx runner/src/cost.ts",
     "keeper": "tsx runner/src/keeper.ts",
     "deploy:sepolia": "npm run deploy:sepolia -w contracts",
-    "runner:test": "npm run run-tests -w runner",
+    "runner:test": "tsx runner/src/run-tests.ts",
     "policy:hash": "npm run policy:hash -w runner",
     "source:hash": "npm run source:hash -w runner --",
     "typecheck": "tsc --noEmit -p contracts/tsconfig.json && tsc --noEmit -p runner/tsconfig.json && tsc --noEmit -p example-deliverable/tsconfig.json",
     "runner:sign": "npm run sign -w runner",
-    "runner:submit": "npm run submit -w runner"
+    "runner:submit": "npm run submit -w runner",
+    "authority": "tsx runner/src/authority-cli.ts",
+    "demo:cli": "npm run build && tsx contracts/scripts/demo-cli.ts",
+    "deploy:authority:sepolia": "npm run deploy:authority:sepolia -w contracts",
+    "delivery": "tsx runner/src/delivery-cli.ts"
   }
 }
