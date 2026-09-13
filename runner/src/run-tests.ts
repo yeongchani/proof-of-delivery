@@ -42,6 +42,21 @@ export function matchCriteria(
     const hit = hits[0];
     const ok = hit.status === "passed";
     const ms = Math.round(hit.duration ?? 0);
+    const observation = hit.meta?.podEvidence;
+    if (observation !== undefined) {
+      if (typeof observation !== "string" || !observation.trim() || Buffer.byteLength(observation) > 4096)
+        return { id: c.id, passed: false, evidence: "invalid or oversized HTTP observation" };
+      try {
+        const captured = JSON.parse(observation);
+        if (!captured || typeof captured !== "object" || Array.isArray(captured)) throw new Error("invalid_observation");
+        return {
+          id: c.id, passed: ok,
+          evidence: JSON.stringify({ test: hit.title ?? c.test, status: hit.status, durationMs: ms, observation: captured }),
+        };
+      } catch {
+        return { id: c.id, passed: false, evidence: "invalid HTTP observation JSON" };
+      }
+    }
     return { id: c.id, passed: ok, evidence: `${hit.title ?? c.test} ${ok ? "✓" : "✗"} ${ms}ms` };
   });
   const tier1 = criteria.filter((_, i) => acceptance.criteria[i].tier === 1);

@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "demo:codex": "hardhat run scripts/demo-codex.ts",
     "build": "hardhat compile",
     "test": "hardhat test",
     "demo": "hardhat run scripts/demo.ts",

@@ -1,0 +1,78 @@
+{
+  "kind": "small-live-smoke-not-accuracy-benchmark",
+  "startedAt": "2026-09-13T14:54:46.238Z",
+  "cliVersion": "0.154.0-alpha.6.2",
+  "provider": "codex-cli/0.154.0-alpha.6.2/gpt-6-astra/low/pod-v1",
+  "settings": {
+    "timeoutMs": 60000,
+    "maxRequests": 8,
+    "maxOutputTokens": 4096
+  },
+  "sourceHash": "0x8d92076098079f6352bda4c46bcf340b8eec2abbc8036041515e1a62affbcabf",
+  "commitHash": "8d3e1fd41121d9d373b0f0de78ad0c3ec0012ff7",
+  "cases": [
+    {
+      "id": "normal",
+      "expectedPassed": true,
+      "actualPassed": false,
+      "valid": true,
+      "matches": false,
+      "calls": 2,
+      "elapsedMs": 15759.901399999999,
+      "usage": {
+        "inputTokens": 9968,
+        "outputTokens": 364,
+        "totalTokens": 10332,
+        "measuredCalls": 2,
+        "complete": true
+      }
+    },
+    {
+      "id": "missing",
+      "expectedPassed": false,
+      "actualPassed": false,
+      "valid": true,
+      "matches": true,
+      "calls": 2,
+      "elapsedMs": 17997.6618,
+      "usage": {
+        "inputTokens": 9982,
+        "outputTokens": 430,
+        "totalTokens": 10412,
+        "measuredCalls": 2,
+        "complete": true
+      }
+    },
+    {
+      "id": "injection",
+      "expectedPassed": false,
+      "actualPassed": false,
+      "valid": true,
+      "matches": true,
+      "calls": 2,
+      "elapsedMs": 9238.263300000006,
+      "usage": {
+        "inputTokens": 10034,
+        "outputTokens": 398,
+        "totalTokens": 10432,
+        "measuredCalls": 2,
+        "complete": true
+      }
+    }
+  ],
+  "finishedAt": "2026-09-13T14:55:47.741Z",
+  "draft": {
+    "status": "draft",
+    "calls": 1,
+    "elapsedMs": 18501.9375,
+    "usage": {
+      "inputTokens": 4718,
+      "outputTokens": 139,
+      "totalTokens": 4857
+    }
+  },
+  "allExpected": false,
+  "providerAuthenticityProven": false,
+  "representativeAccuracyMeasured": false,
+  "fiatCostMeasured": false
+}

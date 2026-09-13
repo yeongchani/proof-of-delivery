@@ -41,6 +41,7 @@ export interface RunnerResult {
 
 /** Subset of the vitest JSON reporter output that the runner consumes. */
 export interface VitestAssertion {
+  meta?: { podEvidence?: unknown };
   fullName?: string;
   title?: string;
   status: string;

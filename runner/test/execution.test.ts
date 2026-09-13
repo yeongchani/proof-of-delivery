@@ -37,6 +37,15 @@ afterEach(() => {
 });
 
 describe("trusted acceptance execution", () => {
+  it("captures actual HTTP observations from the reviewed tests for evidence review", () => {
+    const result = runAcceptance({outDir:null,quiet:true});
+    expect(result.passed).toBe(true);
+    expect(result.criteria[0].evidence).toContain('"status":200');
+    expect(result.criteria[0].evidence).toContain('"responseBody":{"ok":true}');
+    expect(result.criteria[1].evidence).toContain('"status":201');
+    expect(result.criteria[2].evidence).toContain('"status":400');
+    expect(result.criteria[4].evidence).toContain('"status":404');
+  },30000);
   it("ignores the deliverable test command and fails an implementation that only returns errors", () => {
     const dir = candidate(
       'import express from "express"; export const app=express(); app.use((_req,res)=>res.status(500).end());'

@@ -15,6 +15,10 @@ const report = (assertions: ReturnType<typeof assertion>[], success = true) => (
 });
 
 describe("verdict must fail closed", () => {
+  it.each(["not json", "x".repeat(5000)])("fails malformed or excessive HTTP observation evidence", (podEvidence) => {
+    const observed = {...assertion("health","passed"),meta:{podEvidence}};
+    expect(matchCriteria(acceptance,report([observed])).passed).toBe(false);
+  });
   it("does not accept a similarly named mock instead of the failed required test", () => {
     expect(
       matchCriteria(acceptance, report([assertion("health mock", "passed"), assertion("health", "failed")])).passed

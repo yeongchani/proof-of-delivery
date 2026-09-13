@@ -1,0 +1,34 @@
+{
+  "status": "draft",
+  "requiresBilateralApproval": true,
+  "executable": false,
+  "suggestions": [
+    {
+      "id": "AC-1",
+      "description": "Draft: The health endpoint returns HTTP 200.",
+      "requirementId": "R-1",
+      "quote": "The health endpoint must return HTTP 200.",
+      "clarification": "Both parties must approve the endpoint path, request method, and conditions under which HTTP 200 is required."
+    },
+    {
+      "id": "AC-2",
+      "description": "Draft: The interface meets jointly agreed criteria for intuitive use.",
+      "requirementId": "R-1",
+      "quote": "The interface should feel intuitive.",
+      "clarification": "Which users, tasks, and evaluation criteria will both parties agree define intuitive use? This draft does not establish that usability has been demonstrated."
+    }
+  ],
+  "model": "codex-cli/0.154.0-alpha.6.2/gpt-6-astra/low/pod-v1",
+  "mode": "live",
+  "inputHash": "0x1c09060db5452fa314c18ecc9e6adf863f415bed1f4984ceb0528557d3f3e3b4",
+  "promptHash": "0x28e329b59a9f172295ec4d392b880b8c1822d49b93382f4a567d91a34a061af5",
+  "policyHash": "0x23af075b37e7ab5627238bccd05e9ed8dd52523a525ad750fb099a21ecac3bb6",
+  "calls": 1,
+  "usage": {
+    "inputTokens": 4718,
+    "outputTokens": 139,
+    "totalTokens": 4857
+  },
+  "elapsedMs": 18501.9375,
+  "rawResponse": "{\"suggestions\":[{\"id\":\"AC-1\",\"description\":\"Draft: The health endpoint returns HTTP 200.\",\"requirementId\":\"R-1\",\"quote\":\"The health endpoint must return HTTP 200.\",\"clarification\":\"Both parties must approve the endpoint path, request method, and conditions under which HTTP 200 is required.\"},{\"id\":\"AC-2\",\"description\":\"Draft: The interface meets jointly agreed criteria for intuitive use.\",\"requirementId\":\"R-1\",\"quote\":\"The interface should feel intuitive.\",\"clarification\":\"Which users, tasks, and evaluation criteria will both parties agree define intuitive use? This draft does not establish that usability has been demonstrated.\"}]}"
+}

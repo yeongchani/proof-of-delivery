@@ -21,7 +21,9 @@ export interface ProviderResponse {
   content: string;
   usage?: TokenUsage;
 }
-/** Providers must make exactly one request per complete(), with no retries or tools. */
+/** One inference attempt per complete(), with no adapter retries or tool use.
+ * CLI transport bounds generation by time/bytes and rejects excess tokens after completion.
+ */
 export interface AIProvider {
   readonly model: string;
   readonly mode: ReviewMode;

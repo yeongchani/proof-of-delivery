@@ -1,0 +1,30 @@
+{
+  "kind": "small-live-smoke-not-accuracy-benchmark",
+  "startedAt": "2026-09-13T15:00:26.959Z",
+  "cliVersion": "0.154.0-alpha.6.2",
+  "provider": "codex-cli/0.154.0-alpha.6.2/gpt-6-astra/low/pod-v1",
+  "settings": {
+    "timeoutMs": 60000,
+    "maxRequests": 8,
+    "maxOutputTokens": 4096
+  },
+  "sourceHash": "0xc772c665c6ab71ea2f3ac70aec941562ab02173a98c072614e6fee20beabab4e",
+  "commitHash": "8d3e1fd41121d9d373b0f0de78ad0c3ec0012ff7",
+  "cases": [
+    {
+      "id": "normal",
+      "expectedPassed": true,
+      "inputHash": "0x7303e0358d9853f60cca4fd4b40b9bdf2686d4c29613ebf77cb292b1af77c736"
+    },
+    {
+      "id": "missing",
+      "expectedPassed": false,
+      "inputHash": "0xf19ae16ffab598f61f1f66ca2e8e1182e70eb4d96b6e44111040a28f455e4913"
+    },
+    {
+      "id": "injection",
+      "expectedPassed": false,
+      "inputHash": "0xa83fc3e92e7d211137e4b74c3b3c7de5fd66df0529201c3dcf264df582207274"
+    }
+  ]
+}

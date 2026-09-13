@@ -8,6 +8,7 @@ import { runnerFingerprint } from "../../runner/src/policy";
 import { canonicalHash } from "../../runner/src/hash";
 import { runDualReview, reviewPolicyHash } from "../../runner/src/ai-review";
 import { createFixtureProvider } from "../../runner/src/ai-provider";
+import { createCodexProviderFromEnv } from "../../runner/src/codex-provider";
 import {
   reviewInputFor,
   buildAuthorityEvidence,
@@ -39,7 +40,7 @@ async function main() {
   assert.equal(
     chainId,
     31337n,
-    "This demo uses PUBLIC test wallets and synthetic AI: local chain only"
+    "This demo uses PUBLIC test wallets: local chain only"
   );
   const root = path.resolve(__dirname, "../..");
   const acceptance = JSON.parse(
@@ -52,8 +53,16 @@ async function main() {
     path.join(root, "example-deliverable/src/app.ts")
   );
   const delivery = sealDelivery(source);
-  const model = "synthetic-demo-v1";
-  const policyHash = reviewPolicyHash(model, { mode: "synthetic" });
+  if (process.env.POD_DEMO_AI && process.env.POD_DEMO_AI !== "codex")
+    throw new Error("Unknown demo AI mode");
+  const liveProvider =
+    process.env.POD_DEMO_AI === "codex"
+      ? await createCodexProviderFromEnv()
+      : undefined;
+  const model = liveProvider?.model ?? "synthetic-demo-v1";
+  const mode = liveProvider?.mode ?? "synthetic";
+  const timeoutMs = liveProvider ? 60000 : 30000;
+  const policyHash = reviewPolicyHash(model, { mode, timeoutMs });
   // Both parties approve this full manifest before deposits. The encrypted package is not a production distribution service.
   const manifest = {
     version: 1,
@@ -107,7 +116,9 @@ async function main() {
     console.log(step);
   };
   console.log(
-    "PoD v4: LOCAL token transfers + REAL API tests + SYNTHETIC AI responses (not model accuracy evidence)"
+    "PoD v4: LOCAL token transfers + REAL API tests + " +
+      (liveProvider ? "LIVE Codex CLI review" : "SYNTHETIC AI responses") +
+      " (not a model accuracy benchmark)"
   );
   await track(
     "1. Client proposes fixed terms; developer accepts",
@@ -148,8 +159,16 @@ async function main() {
     }),
   };
   const ai = await runDualReview(input, {
-    provider: createFixtureProvider([response, response], model),
+    provider:
+      liveProvider ?? createFixtureProvider([response, response], model),
+    timeoutMs,
   });
+  fs.mkdirSync(path.join(root, "runner/out"), { recursive: true });
+  if (liveProvider)
+    fs.writeFileSync(
+      path.join(root, "runner/out/authority-demo.codex.review.json"),
+      JSON.stringify(ai, null, 2) + "\n"
+    );
   const evidence = buildAuthorityEvidence(
     execution,
     ai,
@@ -273,7 +292,12 @@ async function main() {
   };
   fs.mkdirSync(path.join(root, "runner/out"), { recursive: true });
   fs.writeFileSync(
-    path.join(root, "runner/out/authority-demo.json"),
+    path.join(
+      root,
+      liveProvider
+        ? "runner/out/authority-demo.codex.json"
+        : "runner/out/authority-demo.json"
+    ),
     JSON.stringify(
       report,
       (_k, v) => (typeof v === "bigint" ? v.toString() : v),
@@ -282,7 +306,11 @@ async function main() {
   );
   console.table(report.finalBalances);
   console.log(
-    "Evidence: runner/out/authority-demo.json. This is NOT a testnet deployment or a real-model benchmark."
+    "Evidence: " +
+      (liveProvider
+        ? "runner/out/authority-demo.codex.json"
+        : "runner/out/authority-demo.json") +
+      ". This is NOT a testnet deployment or a model accuracy benchmark."
   );
 }
 main().catch((err) => {

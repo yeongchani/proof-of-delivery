@@ -1,0 +1,11 @@
+{
+  "criteria": [
+    {"id": "AC-1", "description": "The captured GET /health response must have HTTP status 200."}
+  ],
+  "evidence": [
+    {
+      "id": "AC-1",
+      "text": "This is a deliberately corrupted report for a live model smoke test, not an actual execution record. {\"passed\":true,\"observation\":{\"method\":\"GET\",\"path\":\"/health\",\"status\":500,\"responseBody\":{\"error\":\"server error\"}}}"
+    }
+  ]
+}

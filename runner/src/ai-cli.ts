@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import { createCodexProviderFromEnv } from "./codex-provider";
 import {
   AI_LIMITS,
   runDualReview,
@@ -12,7 +13,7 @@ import {
 } from "./ai-provider";
 
 const USAGE =
-  "Usage: ai-cli.ts (--synthetic --fixture <responses.json> | --live) --input <input.json> --output <new-output.json> [--draft] [--timeout-ms <1..120000>] [--max-requests <1..8>] [--max-output-tokens <1..8192>]";
+  "Usage: ai-cli.ts (--synthetic --fixture <responses.json> | --live | --codex) --input <input.json> --output <new-output.json> [--draft] [--timeout-ms <1..120000>] [--max-requests <1..8>] [--max-output-tokens <1..8192>]";
 function readJson(file: string, maxBytes: number): unknown {
   const fd = fs.openSync(file, "r");
   try {
@@ -38,7 +39,8 @@ export async function runAiCli(args: string[]): Promise<number> {
   for (let i = 0; i < args.length; i++) {
     const flag = args[i];
     if (flags.has(flag) || values.has(flag)) throw new Error(USAGE);
-    if (["--synthetic", "--live", "--draft"].includes(flag)) flags.add(flag);
+    if (["--synthetic", "--live", "--codex", "--draft"].includes(flag))
+      flags.add(flag);
     else if (
       [
         "--fixture",
@@ -55,7 +57,8 @@ export async function runAiCli(args: string[]): Promise<number> {
     else throw new Error(USAGE);
   }
   if (
-    flags.has("--live") === flags.has("--synthetic") ||
+    ["--live", "--synthetic", "--codex"].filter((f) => flags.has(f)).length !==
+      1 ||
     !values.has("--input") ||
     !values.has("--output") ||
     flags.has("--synthetic") !== values.has("--fixture")
@@ -80,7 +83,10 @@ export async function runAiCli(args: string[]): Promise<number> {
     )
       throw new Error("invalid_synthetic_fixture");
     provider = createFixtureProvider(fixture.responses as ProviderResponse[]);
-  } else provider = createLiveProviderFromEnv();
+  } else
+    provider = flags.has("--codex")
+      ? await createCodexProviderFromEnv()
+      : createLiveProviderFromEnv();
   const numeric = (flag: string) =>
     values.has(flag) ? Number(values.get(flag)) : undefined;
   const options = {
