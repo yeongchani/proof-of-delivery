@@ -52,6 +52,7 @@ describe("trusted acceptance execution", () => {
     );
     const result = runAcceptance({ deliverableDir: dir, outDir: null, quiet: true });
     expect(result.passed).toBe(false);
+    expect(result.criteria[3].evidence).toContain('"status":500');
     expect(result.sourceCommitted).toBe(false);
     expect(result.sourceHash).toMatch(/^0x[0-9a-f]{64}$/);
     expect(fs.existsSync(path.join(dir, "package-command-ran"))).toBe(false);
@@ -60,6 +61,13 @@ describe("trusted acceptance execution", () => {
     const dir = candidate('throw new Error("broken module"); export const app = null;');
     expect(runAcceptance({ deliverableDir: dir, outDir: null, quiet: true }).passed).toBe(false);
   }, 30000);
+  it("preserves plain-text responses instead of recording an empty JSON body", () => {
+    const dir = candidate('import express from "express"; export const app=express(); app.use((_req,res)=>res.status(400).type("text/plain").send("Missing name"));');
+    const result = runAcceptance({deliverableDir:dir,outDir:null,quiet:true});
+    expect(result.criteria[2].passed).toBe(true);
+    expect(result.criteria[2].evidence).toContain('"responseBody":"Missing name"');
+    expect(result.criteria[2].evidence).toContain('"contentType":"text/plain');
+  },30000);
   it("rejects a candidate that changes the agreed test-suite fingerprint", () => {
     const dir = candidate("export const app = null;");
     const file = path.join(dir, "acceptance.json");

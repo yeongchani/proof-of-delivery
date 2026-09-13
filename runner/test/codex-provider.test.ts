@@ -25,11 +25,13 @@ const req = () => ({
   signal: new AbortController().signal,
 });
 describe("Codex subprocess adapter (fake CLI, no account or network needed)", () => {
-  it.each([
-    ["--codex", "--live"],
-    ["--codex", "--synthetic"],
-    ["--codex", "--fixture", "answers.json"],
-  ].map(flags=>({flags})))("rejects ambiguous CLI modes before launching: %j", async ({flags}) => {
+  it.each(
+    [
+      ["--codex", "--live"],
+      ["--codex", "--synthetic"],
+      ["--codex", "--fixture", "answers.json"],
+    ].map((flags) => ({ flags }))
+  )("rejects ambiguous CLI modes before launching: %j", async ({ flags }) => {
     await expect(
       runAiCli([
         ...flags,
@@ -75,9 +77,33 @@ describe("Codex subprocess adapter (fake CLI, no account or network needed)", ()
       await new Promise((resolve) => setTimeout(resolve, 10));
     }
     expect(cwd && fs.existsSync(path.join(cwd, "worker.pid"))).toBeTruthy();
-    controller.abort();
-    await rejected;
-    expect(fs.existsSync(cwd!)).toBe(false);
+    const workerPid = Number(
+      fs.readFileSync(path.join(cwd!, "worker.pid"), "utf8")
+    );
+    const workerAlive = () => {
+      try {
+        process.kill(workerPid, 0);
+        // A Linux zombie has terminated and cannot execute or hold pipes.
+        if (process.platform === "linux") {
+          const stat = fs.readFileSync("/proc/" + workerPid + "/stat", "utf8");
+          return stat.slice(stat.lastIndexOf(")") + 2).split(" ")[0] !== "Z";
+        }
+        return true;
+      } catch {
+        return false;
+      }
+    };
+    try {
+      controller.abort();
+      await rejected;
+      for (let i = 0; i < 50 && workerAlive(); i++)
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      expect(workerAlive()).toBe(false);
+      expect(fs.existsSync(cwd!)).toBe(false);
+    } finally {
+      controller.abort();
+      if (workerAlive()) process.kill(workerPid, "SIGKILL");
+    }
   }, 5000);
   it("uses stdin and isolated cwd, removes secrets, binds CLI/model policy, and parses usage", async () => {
     const fake = fixture();

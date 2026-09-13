@@ -2,14 +2,24 @@ import { describe, it, expect } from "vitest";
 import request from "supertest";
 import { app } from "pod-deliverable";
 
+function observedResponse(res: request.Response) {
+  return {
+    status: res.status,
+    contentType: res.headers["content-type"] ?? "",
+    responseBody:
+      res.type === "application/json" || res.type.endsWith("+json")
+        ? res.body
+        : res.text ?? "",
+  };
+}
+
 describe("example API", () => {
   it("health", async ({ task }) => {
     const res = await request(app).get("/health");
     task.meta.podEvidence = JSON.stringify({
       method: "GET",
       path: "/health",
-      status: res.status,
-      responseBody: res.body,
+      ...observedResponse(res),
     });
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ ok: true });
@@ -21,8 +31,7 @@ describe("example API", () => {
       method: "POST",
       path: "/items",
       requestBody: { name: "widget" },
-      status: res.status,
-      responseBody: res.body,
+      ...observedResponse(res),
     });
     expect(res.status).toBe(201);
     expect(res.body.name).toBe("widget");
@@ -35,8 +44,7 @@ describe("example API", () => {
       method: "POST",
       path: "/items",
       requestBody: {},
-      status: res.status,
-      responseBody: res.body,
+      ...observedResponse(res),
     });
     expect(res.status).toBe(400);
   });
@@ -48,8 +56,7 @@ describe("example API", () => {
       method: "GET",
       path: "/items/" + created.body.id,
       createdItem: created.body,
-      status: res.status,
-      responseBody: res.body,
+      ...observedResponse(res),
     });
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ id: created.body.id, name: "gadget" });
@@ -60,8 +67,7 @@ describe("example API", () => {
     task.meta.podEvidence = JSON.stringify({
       method: "GET",
       path: "/items/does-not-exist",
-      status: res.status,
-      responseBody: res.body,
+      ...observedResponse(res),
     });
     expect(res.status).toBe(404);
   });

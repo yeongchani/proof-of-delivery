@@ -178,7 +178,7 @@ async function main() {
   );
   assert.equal(evidence.passed, true);
   console.log(
-    `3. Actual acceptance checks passed; synthetic dual-review pipeline calls=${ai.calls}`
+    `3. Actual acceptance checks passed; ${ai.mode} dual-review pipeline calls=${ai.calls}`
   );
   const message = {
     agreementId: 1,
