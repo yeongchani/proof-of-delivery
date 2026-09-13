@@ -1,5 +1,7 @@
 # 검증 구조와 서명 절차
 
+> 이 문서는 기존 v1 MilestoneEscrow 전용입니다. 새 권한 계약과 데모는 [AuthorityEscrow 운영](authority.md)을 참고하세요. v1 CLI의 서명을 v2에 제출할 수 없습니다.
+
 [README로 돌아가기](../README.md)
 
 ## 두 환경을 분리합니다

@@ -8,7 +8,11 @@
     "source:hash": "tsx src/provenance.ts",
     "sign": "tsx src/sign.ts",
     "submit": "tsx src/submit.ts",
-    "test": "vitest run"
+    "test": "vitest run",
+    "ai:review": "tsx src/ai-cli.ts",
+    "ai:draft": "tsx src/ai-cli.ts --draft",
+    "cost": "tsx src/cost.ts",
+    "keeper": "tsx src/keeper.ts"
   },
   "dependencies": {
     "ethers": "^6.13.0"

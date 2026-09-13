@@ -1,0 +1,23 @@
+{
+  "status": "draft",
+  "requiresBilateralApproval": true,
+  "executable": false,
+  "suggestions": [
+    {
+      "id": "D-1",
+      "description": "Agree on a dashboard visual acceptance rubric.",
+      "requirementId": "R-1",
+      "quote": "The dashboard should feel professional.",
+      "clarification": "Both parties must agree on concrete examples and a human review process; this subjective statement supplies no executable proof."
+    }
+  ],
+  "model": "synthetic-fixture-v1",
+  "mode": "synthetic",
+  "inputHash": "0x85e85ffb5d302d0117d6f44b8dfcc7470e64cfff075aead8da31d7ac2ef7e2c2",
+  "promptHash": "0x28e329b59a9f172295ec4d392b880b8c1822d49b93382f4a567d91a34a061af5",
+  "policyHash": "0x60a8a7385543770b5bfccf978fc66899dd637b0314755065a0aea1df109f72b7",
+  "calls": 1,
+  "usage": null,
+  "elapsedMs": 3.0697999999999865,
+  "rawResponse": "{\"suggestions\":[{\"id\":\"D-1\",\"description\":\"Agree on a dashboard visual acceptance rubric.\",\"requirementId\":\"R-1\",\"quote\":\"The dashboard should feel professional.\",\"clarification\":\"Both parties must agree on concrete examples and a human review process; this subjective statement supplies no executable proof.\"}]}"
+}

@@ -15,7 +15,12 @@
   "scripts": {
     "build": "npm run build -w contracts",
     "test": "npm test --workspaces --if-present",
-    "demo": "npm run demo -w contracts",
+    "demo": "npm run demo:authority -w contracts",
+    "demo:legacy": "npm run demo -w contracts",
+    "ai:review": "tsx runner/src/ai-cli.ts",
+    "ai:draft": "tsx runner/src/ai-cli.ts --draft",
+    "cost": "tsx runner/src/cost.ts",
+    "keeper": "tsx runner/src/keeper.ts",
     "deploy:sepolia": "npm run deploy:sepolia -w contracts",
     "runner:test": "npm run run-tests -w runner",
     "policy:hash": "npm run policy:hash -w runner",

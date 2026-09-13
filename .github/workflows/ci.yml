@@ -10,6 +10,7 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
@@ -22,3 +23,39 @@ jobs:
       - run: npm test
       - run: npm run typecheck
       - run: npm run demo
+      - run: npm run demo:legacy
+      - name: Exercise explicit synthetic AI CLI
+        run: npm run ai:review -- --synthetic --fixture runner/fixtures/ai-responses.synthetic.json --input runner/fixtures/ai-input.synthetic.json --output runner/out/ci-ai-review.json
+      - name: Exercise draft CLI
+        run: npm run ai:draft -- --synthetic --fixture runner/fixtures/ai-draft-responses.synthetic.json --input runner/fixtures/ai-draft-input.synthetic.json --output runner/out/ci-ai-draft.json
+      - run: npm run cost -- docs/cost-assumptions.example.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: authority-demo-evidence
+          path: |
+            runner/out/authority-demo.json
+            runner/out/ci-ai-review.json
+            runner/out/ci-ai-draft.json
+          if-no-files-found: error
+          retention-days: 30
+
+  attest-evidence:
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
+      attestations: write
+    steps:
+      # This job never checks out or executes candidate/repository code.
+      - uses: actions/download-artifact@v4
+        with:
+          name: authority-demo-evidence
+          path: evidence
+      - uses: actions/attest@v4
+        with:
+          subject-path: evidence/authority-demo.json
+          create-storage-record: false

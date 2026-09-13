@@ -1,0 +1,8 @@
+{
+  "mode": "synthetic",
+  "responses": [
+    {
+      "content": "{\"suggestions\":[{\"id\":\"D-1\",\"description\":\"Agree on a dashboard visual acceptance rubric.\",\"requirementId\":\"R-1\",\"quote\":\"The dashboard should feel professional.\",\"clarification\":\"Both parties must agree on concrete examples and a human review process; this subjective statement supplies no executable proof.\"}]}"
+    }
+  ]
+}

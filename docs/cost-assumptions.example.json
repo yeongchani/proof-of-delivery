@@ -1,0 +1,14 @@
+{
+  "transactionValue": 100,
+  "feeBps": 500,
+  "inputTokens": 1000,
+  "outputTokens": 500,
+  "inputPerMillion": 2,
+  "outputPerMillion": 4,
+  "executionCost": 0.1,
+  "gasCost": 0.2,
+  "reviewMinutes": 6,
+  "hourlyReviewCost": 20,
+  "disputeProbability": 0.1,
+  "disputeCost": 10
+}

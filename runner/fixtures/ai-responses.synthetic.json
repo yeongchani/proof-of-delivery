@@ -1,0 +1,11 @@
+{
+  "mode": "synthetic",
+  "responses": [
+    {
+      "content": "{\"criteria\":[{\"id\":\"AC-1\",\"passed\":true,\"citations\":[{\"evidenceId\":\"E-1\",\"quote\":\"Health check: passed.\"}]}]}"
+    },
+    {
+      "content": "{\"criteria\":[{\"id\":\"AC-1\",\"passed\":true,\"citations\":[{\"evidenceId\":\"E-1\",\"quote\":\"Health check: passed.\"}]}]}"
+    }
+  ]
+}

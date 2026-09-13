@@ -1,0 +1,5 @@
+{
+  "requirements": [
+    { "id": "R-1", "text": "The dashboard should feel professional." }
+  ]
+}

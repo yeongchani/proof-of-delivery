@@ -6,6 +6,7 @@
     "build": "hardhat compile",
     "test": "hardhat test",
     "demo": "hardhat run scripts/demo.ts",
+    "demo:authority": "hardhat run scripts/demo-authority.ts",
     "deploy:sepolia": "hardhat run scripts/deploy.ts --network arbitrumSepolia"
   },
   "dependencies": {

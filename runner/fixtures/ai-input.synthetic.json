@@ -1,0 +1,14 @@
+{
+  "criteria": [
+    {
+      "id": "AC-1",
+      "description": "The supplied test report records the health check as passed."
+    }
+  ],
+  "evidence": [
+    {
+      "id": "E-1",
+      "text": "SYNTHETIC DEMO ONLY. Health check: passed. This is fixture data, not actual execution evidence."
+    }
+  ]
+}

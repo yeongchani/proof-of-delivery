@@ -1,5 +1,7 @@
 # Arbitrum Sepolia 시연 준비
 
+> 이 문서는 기존 v1 MilestoneEscrow 전용입니다. 새 AuthorityEscrow의 배포 완료 기록이 아니며 ABI·서명 형식이 다릅니다. [새 계약 운영](authority.md)을 참고하세요.
+
 [README로 돌아가기](../README.md) · [결과 검토·서명 절차](verification.md)
 
 **현재 공개 배포 주소와 실제 거래 기록은 없습니다.** 아래는 이를 만들기 위한 수동 시연 절차입니다. `npm run deploy:sepolia`는 배포만 수행하며, 계약 생성·예치·지급까지 자동으로 진행하지 않습니다.
