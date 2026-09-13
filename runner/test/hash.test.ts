@@ -55,7 +55,7 @@ describe("matchCriteria", () => {
   it("treats a criterion with no matching test as failed", () => {
     const { criteria, passed } = matchCriteria(
       { ...acceptance, criteria: [{ id: "AC-9", tier: 1, desc: "x", test: "nope" }] },
-      vitestJson,
+      vitestJson
     );
     expect(criteria[0]).toEqual({ id: "AC-9", passed: false, evidence: "no matching test" });
     expect(passed).toBe(false);

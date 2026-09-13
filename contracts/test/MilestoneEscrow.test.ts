@@ -21,7 +21,14 @@ const AMOUNT = USDC("300");
 const COMMIT = "7b1603f00000000000000000000000000000abcd";
 const DIGEST = ethers.id("pod-runner:v0");
 
-enum State { Unfunded, Funded, Submitted, Challenged, Released, Refunded }
+enum State {
+  Unfunded,
+  Funded,
+  Submitted,
+  Challenged,
+  Released,
+  Refunded,
+}
 
 function loadAcceptance() {
   const file = path.join(__dirname, "..", "..", "example-deliverable", "acceptance.json");
@@ -49,7 +56,7 @@ async function createdFixture() {
       WINDOW,
       BOND,
       [AMOUNT],
-      [f.acceptanceHash],
+      [f.acceptanceHash]
     );
   return { ...f, createTx: tx, agreementId: 1n };
 }
@@ -81,7 +88,7 @@ function makeResult(f: Fixture, overrides: Partial<RunnerResult> = {}): RunnerRe
 async function signResult(
   signer: HardhatEthersSigner,
   escrowAddress: string,
-  message: VerificationResultMessage,
+  message: VerificationResultMessage
 ): Promise<string> {
   const { chainId } = await ethers.provider.getNetwork();
   return signer.signTypedData(domainFor(chainId, escrowAddress), VERIFICATION_RESULT_TYPES, message);
@@ -100,6 +107,239 @@ async function challengedFixture() {
   await f.escrow.connect(f.client).challenge(f.agreementId, 0);
   return f;
 }
+
+describe("Review regressions", () => {
+  async function create(f: Fixture, overrides: Record<string, unknown> = {}) {
+    const p = {
+      developer: f.developer.address,
+      runner: f.runner.address,
+      digest: DIGEST,
+      token: await f.token.getAddress(),
+      window: WINDOW,
+      bond: BOND,
+      amounts: [AMOUNT],
+      hashes: [f.acceptanceHash],
+      ...overrides,
+    };
+    return f.escrow
+      .connect(f.client)
+      .createAgreement(
+        p.developer as string,
+        p.runner as string,
+        p.digest as string,
+        p.token as string,
+        p.window as bigint,
+        p.bond as bigint,
+        p.amounts as bigint[],
+        p.hashes as string[]
+      );
+  }
+
+  for (const field of ["developer", "runner"] as const) {
+    for (const value of ["zero", "client", "escrow"] as const) {
+      it(`rejects ${value} ${field}`, async () => {
+        const f = await loadFixture(deployFixture);
+        const address =
+          value === "zero" ? ethers.ZeroAddress : value === "client" ? f.client.address : await f.escrow.getAddress();
+        await expect(create(f, { [field]: address })).to.be.reverted;
+        expect(await f.escrow.nextAgreementId()).to.equal(1n);
+      });
+    }
+  }
+  it("rejects developer as their own runner", async () => {
+    const f = await loadFixture(deployFixture);
+    await expect(create(f, { runner: f.developer.address })).to.be.reverted;
+  });
+  for (const value of ["zero", "EOA"]) {
+    it(`rejects ${value} token`, async () => {
+      const f = await loadFixture(deployFixture);
+      await expect(create(f, { token: value === "zero" ? ethers.ZeroAddress : f.stranger.address })).to.be.reverted;
+    });
+  }
+  for (const [name, overrides] of Object.entries({
+    digest: { digest: ethers.ZeroHash },
+    amount: { amounts: [0n] },
+    acceptance: { hashes: [ethers.ZeroHash] },
+    "later amount": { amounts: [AMOUNT, 0n], hashes: [DIGEST, DIGEST] },
+    "later acceptance": { amounts: [AMOUNT, AMOUNT], hashes: [DIGEST, ethers.ZeroHash] },
+    "empty milestones": { amounts: [], hashes: [] },
+  })) {
+    it(`rejects zero/empty ${name}`, async () => {
+      const f = await loadFixture(deployFixture);
+      await expect(create(f, overrides)).to.be.reverted;
+      expect(await f.escrow.nextAgreementId()).to.equal(1n);
+    });
+  }
+  for (const window of [0n, 86399n, 2592001n, (1n << 64n) - 1n]) {
+    it(`rejects challenge window ${window}`, async () => {
+      const f = await loadFixture(deployFixture);
+      await expect(create(f, { window })).to.be.reverted;
+    });
+  }
+  for (const window of [86400n, 2592000n]) {
+    it(`accepts boundary window ${window} and zero bond`, async () => {
+      const f = await loadFixture(deployFixture);
+      await create(f, { window, bond: 0n });
+      expect((await f.escrow.getAgreement(1)).challengeWindow).to.equal(window);
+    });
+  }
+  for (const field of ["commitHash", "resultHash"] as const) {
+    for (const passed of [true, false]) {
+      it(`rejects zero ${field} on passed=${passed}`, async () => {
+        const f = await loadFixture(fundedFixture);
+        const message = { ...toMessage(makeResult(f)), passed, [field]: ethers.ZeroHash };
+        const sig = await signResult(f.runner, await f.escrow.getAddress(), message);
+        await expect(f.escrow.submitResult(1, 0, message, sig)).to.be.reverted;
+        expect((await f.escrow.getMilestone(1, 0)).state).to.equal(State.Funded);
+      });
+    }
+  }
+  for (const [id, index] of [
+    [0, 0],
+    [2, 0],
+    [1, 1],
+    [1, 999],
+  ]) {
+    for (const action of [
+      "getMilestone",
+      "releasableAt",
+      "fundMilestone",
+      "submitResult",
+      "challenge",
+      "release",
+      "resolveChallenge",
+    ]) {
+      it(`${action} validates agreement/index ${id}/${index}`, async () => {
+        const f = await loadFixture(createdFixture);
+        const contract = f.escrow.connect(action === "resolveChallenge" ? f.arbiter : f.client);
+        const args: unknown[] = [id, index];
+        if (action === "submitResult") args.push(toMessage(makeResult(f)), "0x");
+        if (action === "resolveChallenge") args.push(true);
+        await expect(contract.getFunction(action)(...args)).to.be.revertedWithCustomError(
+          f.escrow,
+          id === 1 ? "InvalidMilestoneIndex" : "InvalidAgreement"
+        );
+      });
+    }
+  }
+  for (const id of [0, 2]) {
+    it(`getAgreement validates id ${id}`, async () => {
+      const f = await loadFixture(createdFixture);
+      await expect(f.escrow.getAgreement(id)).to.be.reverted;
+    });
+  }
+  it("disables owner renunciation while permitting arbiter transfer and resolution", async () => {
+    const f = await loadFixture(challengedFixture);
+    await expect(f.escrow.connect(f.arbiter).renounceOwnership()).to.be.reverted;
+    expect(await f.escrow.owner()).to.equal(f.arbiter.address);
+    await f.escrow.connect(f.arbiter).transferOwnership(f.stranger.address);
+    expect(await f.escrow.arbiter()).to.equal(f.stranger.address);
+    await expect(f.escrow.connect(f.arbiter).resolveChallenge(1, 0, true)).to.be.revertedWithCustomError(
+      f.escrow,
+      "NotArbiter"
+    );
+    await expect(f.escrow.connect(f.stranger).resolveChallenge(1, 0, true)).to.changeTokenBalances(
+      f.token,
+      [f.escrow, f.developer],
+      [-(AMOUNT + BOND), AMOUNT + BOND]
+    );
+  });
+
+  for (const field of ["chainId", "verifyingContract", "name", "version"]) {
+    it(`rejects replay from another EIP-712 ${field}`, async () => {
+      const f = await loadFixture(fundedFixture);
+      const message = toMessage(makeResult(f));
+      const { chainId } = await ethers.provider.getNetwork();
+      const domain = {
+        ...domainFor(chainId, await f.escrow.getAddress()),
+        [field]:
+          field === "chainId"
+            ? chainId + 1n
+            : field === "verifyingContract"
+            ? await (await ethers.deployContract("MilestoneEscrow", [f.arbiter.address])).getAddress()
+            : "other",
+      };
+      const sig = await f.runner.signTypedData(domain, VERIFICATION_RESULT_TYPES, message);
+      await expect(f.escrow.submitResult(1, 0, message, sig)).to.be.revertedWithCustomError(f.escrow, "BadSigner");
+      expect((await f.escrow.getMilestone(1, 0)).state).to.equal(State.Funded);
+    });
+  }
+
+  it("binds signatures to agreement and milestone, even with identical acceptance hashes", async () => {
+    const f = await loadFixture(fundedFixture);
+    await create(f, { amounts: [AMOUNT, AMOUNT], hashes: [f.acceptanceHash, f.acceptanceHash] });
+    await f.token.connect(f.client).approve(await f.escrow.getAddress(), AMOUNT * 2n);
+    await f.escrow.connect(f.client).fundMilestone(2, 0);
+    await f.escrow.connect(f.client).fundMilestone(2, 1);
+    const message = toMessage(makeResult(f));
+    const sig = await signResult(f.runner, await f.escrow.getAddress(), message);
+    await expect(f.escrow.submitResult(2, 0, message, sig)).to.be.revertedWithCustomError(f.escrow, "ResultMismatch");
+    await expect(f.escrow.submitResult(2, 0, { ...message, agreementId: 2 }, sig)).to.be.revertedWithCustomError(
+      f.escrow,
+      "BadSigner"
+    );
+    const second = { ...message, agreementId: 2n };
+    const secondSig = await signResult(f.runner, await f.escrow.getAddress(), second);
+    await expect(f.escrow.submitResult(2, 1, second, secondSig)).to.be.revertedWithCustomError(
+      f.escrow,
+      "ResultMismatch"
+    );
+    await expect(
+      f.escrow.submitResult(2, 1, { ...second, milestoneIndex: 1 }, secondSig)
+    ).to.be.revertedWithCustomError(f.escrow, "BadSigner");
+  });
+
+  for (const outcome of ["unchallenged", "developer", "client"]) {
+    it(`rejects all repeated actions after ${outcome} settlement`, async () => {
+      const f = await loadFixture(submittedFixture);
+      const sig = await signResult(f.runner, await f.escrow.getAddress(), f.message);
+      await expect(f.escrow.submitResult(1, 0, f.message, sig)).to.be.revertedWithCustomError(f.escrow, "InvalidState");
+      if (outcome === "unchallenged") {
+        await time.increaseTo(await f.escrow.releasableAt(1, 0));
+        await f.escrow.release(1, 0);
+      } else {
+        await f.escrow.connect(f.client).challenge(1, 0);
+        await expect(f.escrow.submitResult(1, 0, f.message, sig)).to.be.revertedWithCustomError(
+          f.escrow,
+          "InvalidState"
+        );
+        await f.escrow.resolveChallenge(1, 0, outcome === "developer");
+      }
+      for (const action of ["fundMilestone", "challenge", "release", "submitResult", "resolveChallenge"]) {
+        const args: unknown[] = [1, 0];
+        if (action === "submitResult") args.push(f.message, sig);
+        if (action === "resolveChallenge") args.push(true);
+        const contract = f.escrow.connect(action === "resolveChallenge" ? f.arbiter : f.client);
+        await expect(contract.getFunction(action)(...args)).to.be.revertedWithCustomError(f.escrow, "InvalidState");
+      }
+      expect(await f.token.balanceOf(await f.escrow.getAddress())).to.equal(0n);
+      expect((await f.escrow.getMilestone(1, 0)).state).to.equal(
+        outcome === "client" ? State.Refunded : State.Released
+      );
+    });
+  }
+
+  it("allows challenge one second before the deadline", async () => {
+    const f = await loadFixture(submittedFixture);
+    await time.setNextBlockTimestamp((await f.escrow.releasableAt(1, 0)) - 1n);
+    await expect(f.escrow.connect(f.client).challenge(1, 0)).to.emit(f.escrow, "Challenged");
+  });
+  it("closes challenge exactly at the deadline", async () => {
+    const f = await loadFixture(submittedFixture);
+    await time.setNextBlockTimestamp(await f.escrow.releasableAt(1, 0));
+    await expect(f.escrow.connect(f.client).challenge(1, 0)).to.be.revertedWithCustomError(f.escrow, "WindowClosed");
+  });
+  it("allows release exactly at the deadline", async () => {
+    const f = await loadFixture(submittedFixture);
+    await time.setNextBlockTimestamp(await f.escrow.releasableAt(1, 0));
+    await expect(f.escrow.release(1, 0)).to.changeTokenBalances(f.token, [f.escrow, f.developer], [-AMOUNT, AMOUNT]);
+  });
+  it("rejects release one second before the deadline", async () => {
+    const f = await loadFixture(submittedFixture);
+    await time.setNextBlockTimestamp((await f.escrow.releasableAt(1, 0)) - 1n);
+    await expect(f.escrow.release(1, 0)).to.be.revertedWithCustomError(f.escrow, "WindowOpen");
+  });
+});
 
 describe("MilestoneEscrow", () => {
   it("1. createAgreement stores fields and emits AgreementCreated", async () => {
@@ -128,7 +368,16 @@ describe("MilestoneEscrow", () => {
     await expect(
       f.escrow
         .connect(f.client)
-        .createAgreement(f.developer.address, f.runner.address, DIGEST, await f.token.getAddress(), WINDOW, BOND, [AMOUNT], []),
+        .createAgreement(
+          f.developer.address,
+          f.runner.address,
+          DIGEST,
+          await f.token.getAddress(),
+          WINDOW,
+          BOND,
+          [AMOUNT],
+          []
+        )
     ).to.be.revertedWithCustomError(f.escrow, "LengthMismatch");
   });
 
@@ -176,19 +425,19 @@ describe("MilestoneEscrow", () => {
 
     const badHash = toMessage(makeResult(f, { acceptanceHash: ethers.id("tampered acceptance") }));
     await expect(
-      f.escrow.submitResult(1, 0, badHash, await signResult(f.runner, escrowAddr, badHash)),
+      f.escrow.submitResult(1, 0, badHash, await signResult(f.runner, escrowAddr, badHash))
     ).to.be.revertedWithCustomError(f.escrow, "HashMismatch");
 
     const badDigest = toMessage(makeResult(f, { runnerImageDigest: ethers.id("pod-runner:evil") }));
     await expect(
-      f.escrow.submitResult(1, 0, badDigest, await signResult(f.runner, escrowAddr, badDigest)),
+      f.escrow.submitResult(1, 0, badDigest, await signResult(f.runner, escrowAddr, badDigest))
     ).to.be.revertedWithCustomError(f.escrow, "DigestMismatch");
   });
 
   it("6. submitResult passed=false -> state stays Funded, emits VerificationFailed", async () => {
     const f = await loadFixture(fundedFixture);
     const message = toMessage(
-      makeResult(f, { passed: false, criteria: [{ id: "AC-1", passed: false, evidence: "health ✗ 5ms" }] }),
+      makeResult(f, { passed: false, criteria: [{ id: "AC-1", passed: false, evidence: "health ✗ 5ms" }] })
     );
     const sig = await signResult(f.runner, await f.escrow.getAddress(), message);
 
@@ -228,7 +477,7 @@ describe("MilestoneEscrow", () => {
     await expect(f.escrow.release(1, 0)).to.be.revertedWithCustomError(f.escrow, "InvalidState");
     await expect(f.escrow.connect(f.stranger).resolveChallenge(1, 0, true)).to.be.revertedWithCustomError(
       f.escrow,
-      "NotArbiter",
+      "NotArbiter"
     );
 
     // developer wins: amount + bond -> developer

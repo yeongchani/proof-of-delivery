@@ -18,6 +18,9 @@
     "demo": "npm run demo -w contracts",
     "deploy:sepolia": "npm run deploy:sepolia -w contracts",
     "runner:test": "npm run run-tests -w runner",
+    "policy:hash": "npm run policy:hash -w runner",
+    "source:hash": "npm run source:hash -w runner --",
+    "typecheck": "tsc --noEmit -p contracts/tsconfig.json && tsc --noEmit -p runner/tsconfig.json && tsc --noEmit -p example-deliverable/tsconfig.json",
     "runner:sign": "npm run sign -w runner",
     "runner:submit": "npm run submit -w runner"
   }

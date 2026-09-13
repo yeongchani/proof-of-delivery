@@ -52,7 +52,7 @@ export async function signResultMessage(
   signer: Signer,
   chainId: bigint | number | string,
   verifyingContract: string,
-  message: VerificationResultMessage,
+  message: VerificationResultMessage
 ): Promise<string> {
   return signer.signTypedData(domainFor(chainId, verifyingContract), VERIFICATION_RESULT_TYPES, message);
 }

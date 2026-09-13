@@ -11,7 +11,9 @@ import {IMilestoneEscrow} from "./interfaces/IMilestoneEscrow.sol";
 
 /// @title Proof of Delivery — MilestoneEscrow
 /// @notice Client funds a milestone; a neutral runner signs the verification result (EIP-712);
-///         after the challenge window the developer is paid automatically. Owner acts as arbiter.
+///         after the challenge window anyone can call release to pay the developer. Owner acts as arbiter.
+/// @dev No timeout/cancellation path: funded milestones await a passing runner result, and
+///      challenged milestones await the arbiter. Only standard exact-transfer ERC20s are supported.
 contract MilestoneEscrow is IMilestoneEscrow, Ownable, EIP712, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
@@ -27,6 +29,21 @@ contract MilestoneEscrow is IMilestoneEscrow, Ownable, EIP712, ReentrancyGuard {
 
     constructor(address initialArbiter) Ownable(initialArbiter) EIP712("ProofOfDelivery", "1") {}
 
+    modifier validAgreement(uint256 agreementId) {
+        if (agreementId == 0 || agreementId >= nextAgreementId) revert InvalidAgreement();
+        _;
+    }
+
+    function _validateMilestone(uint256 agreementId, uint256 index) private view {
+        if (agreementId == 0 || agreementId >= nextAgreementId) revert InvalidAgreement();
+        if (index >= _agreements[agreementId].milestoneCount) revert InvalidMilestoneIndex();
+    }
+
+    /// @notice Disputes require an arbiter; ownership can be transferred but never renounced.
+    function renounceOwnership() public view override onlyOwner {
+        revert OwnershipRenunciationDisabled();
+    }
+
     // ---------------------------------------------------------------- views
 
     /// @notice Owner doubles as the (single, demo) arbiter.
@@ -34,15 +51,17 @@ contract MilestoneEscrow is IMilestoneEscrow, Ownable, EIP712, ReentrancyGuard {
         return owner();
     }
 
-    function getAgreement(uint256 agreementId) external view returns (Agreement memory) {
+    function getAgreement(uint256 agreementId) external view validAgreement(agreementId) returns (Agreement memory) {
         return _agreements[agreementId];
     }
 
     function getMilestone(uint256 agreementId, uint256 index) external view returns (Milestone memory) {
+        _validateMilestone(agreementId, index);
         return _milestones[agreementId][index];
     }
 
     function releasableAt(uint256 agreementId, uint256 index) external view returns (uint64) {
+        _validateMilestone(agreementId, index);
         Milestone storage m = _milestones[agreementId][index];
         if (m.submittedAt == 0) return 0;
         return m.submittedAt + _agreements[agreementId].challengeWindow;
@@ -61,6 +80,11 @@ contract MilestoneEscrow is IMilestoneEscrow, Ownable, EIP712, ReentrancyGuard {
         bytes32[] calldata acceptanceHashes
     ) external returns (uint256 agreementId) {
         if (amounts.length == 0 || amounts.length != acceptanceHashes.length) revert LengthMismatch();
+        if (developer == address(0) || developer == msg.sender || developer == address(this)) revert InvalidDeveloper();
+        if (runner == address(0) || runner == msg.sender || runner == developer || runner == address(this)) revert InvalidRunner();
+        if (address(token).code.length == 0) revert InvalidToken();
+        if (runnerImageDigest == bytes32(0)) revert DigestMismatch();
+        if (challengeWindow < 1 days || challengeWindow > 30 days) revert InvalidChallengeWindow();
 
         agreementId = nextAgreementId++;
         _agreements[agreementId] = Agreement({
@@ -76,6 +100,8 @@ contract MilestoneEscrow is IMilestoneEscrow, Ownable, EIP712, ReentrancyGuard {
         });
 
         for (uint256 i = 0; i < amounts.length; i++) {
+            if (amounts[i] == 0) revert InvalidAmount();
+            if (acceptanceHashes[i] == bytes32(0)) revert HashMismatch();
             Milestone storage m = _milestones[agreementId][i];
             m.amount = amounts[i];
             m.acceptanceHash = acceptanceHashes[i];
@@ -86,6 +112,7 @@ contract MilestoneEscrow is IMilestoneEscrow, Ownable, EIP712, ReentrancyGuard {
     }
 
     function fundMilestone(uint256 agreementId, uint256 index) external nonReentrant {
+        _validateMilestone(agreementId, index);
         Agreement storage a = _agreements[agreementId];
         Milestone storage m = _milestones[agreementId][index];
         if (msg.sender != a.client) revert NotClient();
@@ -103,12 +130,14 @@ contract MilestoneEscrow is IMilestoneEscrow, Ownable, EIP712, ReentrancyGuard {
         VerificationResult calldata r,
         bytes calldata runnerSignature
     ) external {
+        _validateMilestone(agreementId, index);
         Agreement storage a = _agreements[agreementId];
         Milestone storage m = _milestones[agreementId][index];
         if (m.state != MilestoneState.Funded) revert InvalidState();
         if (r.agreementId != agreementId || r.milestoneIndex != index) revert ResultMismatch();
         if (r.acceptanceHash != m.acceptanceHash) revert HashMismatch();
         if (r.runnerImageDigest != a.runnerImageDigest) revert DigestMismatch();
+        if (r.commitHash == bytes32(0) || r.resultHash == bytes32(0)) revert HashMismatch();
 
         bytes32 digest = _hashTypedDataV4(
             keccak256(
@@ -139,6 +168,7 @@ contract MilestoneEscrow is IMilestoneEscrow, Ownable, EIP712, ReentrancyGuard {
     }
 
     function challenge(uint256 agreementId, uint256 index) external nonReentrant {
+        _validateMilestone(agreementId, index);
         Agreement storage a = _agreements[agreementId];
         Milestone storage m = _milestones[agreementId][index];
         if (msg.sender != a.client) revert NotClient();
@@ -153,6 +183,7 @@ contract MilestoneEscrow is IMilestoneEscrow, Ownable, EIP712, ReentrancyGuard {
     }
 
     function release(uint256 agreementId, uint256 index) external nonReentrant {
+        _validateMilestone(agreementId, index);
         Agreement storage a = _agreements[agreementId];
         Milestone storage m = _milestones[agreementId][index];
         if (m.state != MilestoneState.Submitted) revert InvalidState();
@@ -165,6 +196,7 @@ contract MilestoneEscrow is IMilestoneEscrow, Ownable, EIP712, ReentrancyGuard {
     }
 
     function resolveChallenge(uint256 agreementId, uint256 index, bool developerWins) external nonReentrant {
+        _validateMilestone(agreementId, index);
         if (msg.sender != owner()) revert NotArbiter();
         Agreement storage a = _agreements[agreementId];
         Milestone storage m = _milestones[agreementId][index];

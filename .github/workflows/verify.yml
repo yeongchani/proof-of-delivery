@@ -2,8 +2,17 @@ name: pod-verify
 
 on:
   push:
-    paths: ["example-deliverable/**"]
+    paths: ["example-deliverable/**", "runner/**", "package-lock.json", ".github/workflows/verify.yml"]
   workflow_dispatch:
+    inputs:
+      agreement_id:
+        description: Agreement ID to include in unsigned evidence
+        type: string
+        default: "1"
+      milestone_index:
+        description: Milestone index to include in unsigned evidence
+        type: string
+        default: "0"
 
 permissions:
   contents: read
@@ -11,30 +20,27 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     env:
-      RUNNER_IMAGE_DIGEST: ${{ vars.RUNNER_IMAGE_DIGEST }}
+      AGREEMENT_ID: ${{ inputs.agreement_id || '1' }}
+      MILESTONE_INDEX: ${{ inputs.milestone_index || '0' }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
-      - run: npm ci
+      - run: npm ci --ignore-scripts
       - name: Run acceptance tests
         run: npm run runner:test # -> runner/out/result.json
-      - name: Sign result (EIP-712)
-        env:
-          RUNNER_PRIVATE_KEY: ${{ secrets.RUNNER_PRIVATE_KEY }}
-          CHAIN_ID: 421614
-          ESCROW_ADDRESS: ${{ vars.ESCROW_ADDRESS }}
-        run: npm run runner:sign # skipped (exit 0) when secrets are absent
-      - name: Submit on-chain
-        env:
-          RPC_URL: ${{ secrets.ARB_SEPOLIA_RPC }}
-          RUNNER_PRIVATE_KEY: ${{ secrets.RUNNER_PRIVATE_KEY }}
-          ESCROW_ADDRESS: ${{ vars.ESCROW_ADDRESS }}
-        run: npm run runner:submit # skipped (exit 0) when secrets are absent
+      - name: Settlement requires separate review
+        run: echo "Unsigned evidence only. Review this run and sign from a separate trusted checkout; see docs/verification.md."
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: verification-result
           path: runner/out/
+          if-no-files-found: error
+          retention-days: 30

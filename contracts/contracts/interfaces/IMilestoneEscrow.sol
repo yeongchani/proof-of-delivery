@@ -30,7 +30,7 @@ interface IMilestoneEscrow {
         address runner; // EIP-712 signer of verification results
         bytes32 runnerImageDigest; // pinned runner image / workflow digest
         IERC20 token;
-        uint64 challengeWindow; // seconds
+        uint64 challengeWindow; // seconds, inclusive range 1 day to 30 days
         uint256 challengeBond; // token units
         uint256 milestoneCount;
         bool terminated;
@@ -78,6 +78,14 @@ interface IMilestoneEscrow {
     error WindowClosed();
     error LengthMismatch();
     error ResultMismatch();
+    error InvalidAgreement();
+    error InvalidMilestoneIndex();
+    error InvalidDeveloper();
+    error InvalidRunner();
+    error InvalidToken();
+    error InvalidChallengeWindow();
+    error InvalidAmount();
+    error OwnershipRenunciationDisabled();
 
     function createAgreement(
         address developer,

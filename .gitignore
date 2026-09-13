@@ -1,4 +1,5 @@
 node_modules/
+.pod-test-*/
 .env
 .env.*
 !.env.example

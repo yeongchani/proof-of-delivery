@@ -5,8 +5,13 @@
   "description": "Machine-checkable acceptance criteria for one milestone. keccak256(canonical JSON) of this document is the on-chain acceptanceHash. This is also the output format of the (future) AI SOW -> acceptance converter.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["version", "agreement", "milestone", "criteria", "trigger"],
+  "required": ["version", "agreement", "milestone", "criteria", "trigger", "testSuiteHash"],
   "properties": {
+    "testSuiteHash": {
+      "type": "string",
+      "pattern": "^0x[0-9a-f]{64}$",
+      "description": "Fingerprint of the agreed acceptance suite and its config"
+    },
     "version": { "type": "string", "const": "1" },
     "agreement": { "type": "string", "description": "Human-readable agreement slug" },
     "milestone": { "type": "integer", "minimum": 0 },
@@ -19,9 +24,17 @@
         "required": ["id", "tier", "desc", "test"],
         "properties": {
           "id": { "type": "string", "pattern": "^AC-[0-9]+$" },
-          "tier": { "type": "integer", "enum": [1, 2, 3], "description": "1 = must pass for payout, 2/3 = informational" },
+          "tier": {
+            "type": "integer",
+            "enum": [1, 2, 3],
+            "description": "1 = must pass for payout, 2/3 = informational"
+          },
           "desc": { "type": "string" },
-          "test": { "type": "string", "description": "Substring matched (case-insensitive) against the test's full name in the test report" }
+          "test": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Exact case-sensitive title or full name; ambiguous matches fail"
+          }
         }
       }
     },

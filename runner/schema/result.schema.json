@@ -5,12 +5,40 @@
   "description": "Produced by runner/src/run-tests.ts. keccak256(canonical JSON) of this document is the resultHash inside the EIP-712 VerificationResult that the runner signs.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["agreementId", "milestoneIndex", "acceptanceHash", "commitHash", "runnerImageDigest", "criteria", "passed", "timestamp", "logUrl"],
+  "required": [
+    "agreementId",
+    "milestoneIndex",
+    "acceptanceHash",
+    "commitHash",
+    "sourceHash",
+    "sourceCommitted",
+    "runnerImageDigest",
+    "criteria",
+    "passed",
+    "timestamp",
+    "logUrl",
+    "execution"
+  ],
   "properties": {
+    "sourceHash": { "$ref": "#/$defs/bytes32" },
+    "sourceCommitted": { "type": "boolean" },
+    "execution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["exitCode", "reportSuccess"],
+      "properties": {
+        "exitCode": { "type": ["integer", "null"], "minimum": 0 },
+        "reportSuccess": { "type": "boolean" }
+      }
+    },
     "agreementId": { "type": "integer", "minimum": 1 },
     "milestoneIndex": { "type": "integer", "minimum": 0 },
     "acceptanceHash": { "$ref": "#/$defs/bytes32" },
-    "commitHash": { "type": "string", "pattern": "^[0-9a-f]{40}$", "description": "git rev-parse HEAD (left-padded to bytes32 when signed)" },
+    "commitHash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$",
+      "description": "git rev-parse HEAD (left-padded to bytes32 when signed)"
+    },
     "runnerImageDigest": { "$ref": "#/$defs/bytes32" },
     "criteria": {
       "type": "array",

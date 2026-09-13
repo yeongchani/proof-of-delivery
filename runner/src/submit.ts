@@ -7,7 +7,8 @@ import fs from "fs";
 import path from "path";
 import { Contract, JsonRpcProvider, Wallet } from "ethers";
 import { ESCROW_ABI, MILESTONE_STATES } from "./abi";
-import { messageFromJson } from "./eip712";
+import { validateSignedEnvelope } from "./envelope";
+import { validateReviewedResult } from "./review";
 
 const OUT_DIR = path.resolve(__dirname, "..", "out");
 
@@ -17,29 +18,37 @@ async function main(): Promise<void> {
     console.log("[submit] skipped (no RPC)");
     return;
   }
-  const signedFile = path.join(OUT_DIR, "result.signed.json");
+  const signedFile = process.env.SIGNED_RESULT_FILE || path.join(OUT_DIR, "result.signed.json");
   if (!fs.existsSync(signedFile)) {
-    console.log("[submit] skipped (runner/out/result.signed.json not found — run `npm run runner:sign` first)");
-    return;
+    throw new Error("signed result file not found");
   }
 
-  const { message, signature } = JSON.parse(fs.readFileSync(signedFile, "utf8"));
-  const m = messageFromJson(message);
+  const envelope = JSON.parse(fs.readFileSync(signedFile, "utf8"));
+  const { result, signature } = envelope;
+  // Validate the agreement lookup input before making any RPC requests.
+  validateReviewedResult(result, process.env.REVIEWED_RESULT_HASH);
 
   const provider = new JsonRpcProvider(RPC_URL);
+  const { chainId } = await provider.getNetwork();
   const wallet = new Wallet(RUNNER_PRIVATE_KEY, provider);
   const escrow = new Contract(ESCROW_ADDRESS, ESCROW_ABI, wallet);
+  const agreement = await escrow.getAgreement(BigInt(result.agreementId));
+  const m = validateSignedEnvelope(
+    envelope, process.env.REVIEWED_RESULT_HASH, chainId, ESCROW_ADDRESS, agreement.runner
+  );
 
   const milestone = await escrow.getMilestone(m.agreementId, m.milestoneIndex);
   const state = MILESTONE_STATES[Number(milestone.state)] ?? String(milestone.state);
   if (state !== "Funded") {
     console.log(
-      `[submit] skipped (milestone ${m.agreementId}/${m.milestoneIndex} is ${state}, submitResult requires Funded)`,
+      `[submit] skipped (milestone ${m.agreementId}/${m.milestoneIndex} is ${state}, submitResult requires Funded)`
     );
     return;
   }
 
-  console.log(`[submit] submitting agreement=${m.agreementId} milestone=${m.milestoneIndex} passed=${m.passed} as ${wallet.address}`);
+  console.log(
+    `[submit] submitting agreement=${m.agreementId} milestone=${m.milestoneIndex} passed=${m.passed} as ${wallet.address}`
+  );
   const tx = await escrow.submitResult(m.agreementId, m.milestoneIndex, m, signature);
   console.log(`[submit] tx ${tx.hash}`);
   const receipt = await tx.wait();

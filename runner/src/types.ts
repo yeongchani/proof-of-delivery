@@ -3,7 +3,7 @@ export interface Criterion {
   id: string;
   tier: number;
   desc: string;
-  /** substring matched against the test's full name */
+  /** Exact title or full test name; multiple matches are rejected. */
   test: string;
 }
 
@@ -13,6 +13,7 @@ export interface Acceptance {
   milestone: number;
   criteria: Criterion[];
   trigger: "all_tier1_pass" | string;
+  testSuiteHash?: string;
 }
 
 export interface CriterionResult {
@@ -28,11 +29,14 @@ export interface RunnerResult {
   acceptanceHash: string;
   /** 40-hex git commit (git rev-parse HEAD) */
   commitHash: string;
+  sourceHash?: string;
+  sourceCommitted?: boolean;
   runnerImageDigest: string;
   criteria: CriterionResult[];
   passed: boolean;
   timestamp: number;
   logUrl: string;
+  execution?: { exitCode: number | null; reportSuccess: boolean };
 }
 
 /** Subset of the vitest JSON reporter output that the runner consumes. */
@@ -44,5 +48,7 @@ export interface VitestAssertion {
 }
 
 export interface VitestReport {
+  success?: boolean;
+  numFailedTestSuites?: number;
   testResults: { name?: string; assertionResults: VitestAssertion[] }[];
 }

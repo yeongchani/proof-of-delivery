@@ -3,11 +3,37 @@
   "agreement": "example",
   "milestone": 0,
   "criteria": [
-    { "id": "AC-1", "tier": 1, "desc": "GET /health returns 200", "test": "health" },
-    { "id": "AC-2", "tier": 1, "desc": "POST /items creates item", "test": "create item" },
-    { "id": "AC-3", "tier": 1, "desc": "POST /items rejects missing name", "test": "rejects missing name" },
-    { "id": "AC-4", "tier": 1, "desc": "GET /items/:id returns item", "test": "get item" },
-    { "id": "AC-5", "tier": 1, "desc": "GET /items/:id 404 on unknown", "test": "404 unknown" }
+    {
+      "id": "AC-1",
+      "tier": 1,
+      "desc": "GET /health returns 200",
+      "test": "health"
+    },
+    {
+      "id": "AC-2",
+      "tier": 1,
+      "desc": "POST /items creates item",
+      "test": "create item"
+    },
+    {
+      "id": "AC-3",
+      "tier": 1,
+      "desc": "POST /items rejects missing name",
+      "test": "rejects missing name"
+    },
+    {
+      "id": "AC-4",
+      "tier": 1,
+      "desc": "GET /items/:id returns item",
+      "test": "get item"
+    },
+    {
+      "id": "AC-5",
+      "tier": 1,
+      "desc": "GET /items/:id 404 on unknown",
+      "test": "404 unknown"
+    }
   ],
-  "trigger": "all_tier1_pass"
+  "trigger": "all_tier1_pass",
+  "testSuiteHash": "0xbc29072eae6cf235ed245fc2201815097763445965709b4d135d050e8dc6b125"
 }

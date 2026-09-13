@@ -4,6 +4,8 @@
   "private": true,
   "scripts": {
     "run-tests": "tsx src/run-tests.ts",
+    "policy:hash": "tsx src/policy.ts",
+    "source:hash": "tsx src/provenance.ts",
     "sign": "tsx src/sign.ts",
     "submit": "tsx src/submit.ts",
     "test": "vitest run"
