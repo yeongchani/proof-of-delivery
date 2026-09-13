@@ -1,5 +1,8 @@
 node_modules/
 .pod-test-*/
+.pod-policy-test-*/
+.pod-dependency-test-*/
+.pod-report-*/
 .env
 .env.*
 !.env.example

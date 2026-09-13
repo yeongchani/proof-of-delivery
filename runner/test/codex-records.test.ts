@@ -2,9 +2,23 @@ import { describe, it, expect } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import { validateReviewRecord } from "../src/ai-review";
-import { verifyHistoricalAuthorityEvidenceV1 } from "../src/authority-evidence";
+import { buildAuthorityEvidence, verifyHistoricalAuthorityEvidenceV1 } from "../src/authority-evidence";
+import { runnerFingerprint } from "../src/policy";
+import { openDelivery } from "../src/delivery";
 
 describe("archived live records: offline consistency only, NOT provider authenticity or new inference",()=>{
+  it("rebuilds the v5 live source-aware settlement and verifies the delivered source",()=>{
+    const record=JSON.parse(fs.readFileSync(path.resolve(__dirname,"../fixtures/codex-live/authority-demo-v5.json"),"utf8"));
+    const rebuilt=buildAuthorityEvidence(record.evidence.execution,record.evidence.ai,record.manifest.acceptance,record.manifest.aiPolicyHash,31337n);
+    expect(rebuilt.version).toBe(2);
+    expect(rebuilt.passed).toBe(true);
+    expect(record.aiMode).toBe("live");
+    expect(rebuilt.resultHash).toBe(record.signedResult.message.resultHash);
+    expect(record.manifest.runnerDigest).toBe(runnerFingerprint());
+    const source=JSON.parse(openDelivery(record.delivery.envelope,record.delivery.revealedKey,record.manifest.sourceKeyHash,record.manifest.sourcePackageHash).toString("utf8"));
+    expect(source).toEqual(record.evidence.execution.sourceEvidence);
+    expect(record.finalBalances).toEqual({client:"700",developer:"400",escrow:"0"});
+  });
   it("rebuilds the historical v1 settlement without claiming it ran the current code",()=>{
     const record=JSON.parse(fs.readFileSync(path.resolve(__dirname,"../fixtures/codex-live/authority-demo.json"),"utf8"));
     const rebuilt=verifyHistoricalAuthorityEvidenceV1(record.evidence.execution,record.evidence.ai,record.manifest.acceptance,record.manifest.aiPolicyHash,31337n);
