@@ -1,4 +1,5 @@
-import { HardhatUserConfig } from "hardhat/config";
+import { HardhatUserConfig, subtask } from "hardhat/config";
+import { TASK_COMPILE_SOLIDITY_GET_SOLC_BUILD } from "hardhat/builtin-tasks/task-names";
 import "@nomicfoundation/hardhat-toolbox";
 import * as dotenv from "dotenv";
 import path from "path";
@@ -6,6 +7,15 @@ import path from "path";
 dotenv.config({ path: path.join(__dirname, "..", ".env") });
 
 const deployerKey = process.env.DEPLOYER_PRIVATE_KEY;
+
+// Use the exact npm-locked compiler; compiling must not depend on the Solidity download host.
+subtask(TASK_COMPILE_SOLIDITY_GET_SOLC_BUILD).setAction(async ({ solcVersion }: { solcVersion: string }) => {
+  const longVersion: string = require("solc").version();
+  if (solcVersion !== "0.8.24" || !longVersion.startsWith(`${solcVersion}+`)) {
+    throw new Error(`Installed solc ${longVersion} does not match requested ${solcVersion}`);
+  }
+  return { compilerPath: require.resolve("solc/soljson.js"), isSolcJs: true, version: solcVersion, longVersion };
+});
 
 const config: HardhatUserConfig = {
   solidity: {
