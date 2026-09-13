@@ -2,8 +2,18 @@ import { describe, it, expect } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import { validateReviewRecord } from "../src/ai-review";
+import { buildAuthorityEvidence } from "../src/authority-evidence";
+import { runnerFingerprint } from "../src/policy";
 
 describe("archived live records: offline consistency only, NOT provider authenticity or new inference",()=>{
+  it("rebuilds the archived live settlement evidence with the same reviewed runner",()=>{
+    const record=JSON.parse(fs.readFileSync(path.resolve(__dirname,"../fixtures/codex-live/authority-demo.json"),"utf8"));
+    const rebuilt=buildAuthorityEvidence(record.evidence.execution,record.evidence.ai,record.manifest.acceptance,record.manifest.aiPolicyHash,31337n);
+    expect(record.aiMode).toBe("live");
+    expect(rebuilt.passed).toBe(true);
+    expect(rebuilt.resultHash).toBe(record.signedResult.message.resultHash);
+    expect(record.manifest.runnerDigest).toBe(runnerFingerprint());
+  });
   const cases: [string,boolean][] = [
     ["before-observations/normal.json",false],
     ["before-observations/missing.json",false],
